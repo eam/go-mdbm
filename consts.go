@@ -9,7 +9,6 @@ package mdbm
 
 import "C"
 
-
 const FOO_BAR = 1
 const MDBM_O_CREAT = C.MDBM_O_CREAT
 const MDBM_O_TRUNC = C.MDBM_O_TRUNC

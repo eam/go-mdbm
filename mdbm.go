@@ -34,17 +34,17 @@ const MDBM_O_CREAT = C.MDBM_O_CREAT
 const MDBM_REPLACE = C.MDBM_REPLACE
 
 type MdbmLib struct {
-    db *C.MDBM
+	db *C.MDBM
 	// maybe no iter, leave in for now
-    iter *C.MDBM_ITER
+	iter *C.MDBM_ITER
 }
 
 func NewMdbm(db_file string, flags int, mode int, psize int, presize int) *MdbmLib {
-    fmt.Printf("int MDBM_O_WRONLY: %d\n\n\n", C.MDBM_O_WRONLY)
-    fmt.Printf("int MDBM_O_RDWR: %d\n\n\n", C.MDBM_O_RDWR)
-    c_db, err := C.mdbm_open(C.CString(db_file),  C.int(flags), C.int(mode), C.int(psize), C.int(presize))
-    if unsafe.Pointer(c_db) == nil {
-        log.Fatal(err)
+	fmt.Printf("int MDBM_O_WRONLY: %d\n\n\n", C.MDBM_O_WRONLY)
+	fmt.Printf("int MDBM_O_RDWR: %d\n\n\n", C.MDBM_O_RDWR)
+	c_db, err := C.mdbm_open(C.CString(db_file), C.int(flags), C.int(mode), C.int(psize), C.int(presize))
+	if unsafe.Pointer(c_db) == nil {
+		log.Fatal(err)
 		fmt.Printf("mdbm failed: XXXXX %")
 	}
 	thing := C.new_iter()
@@ -53,13 +53,13 @@ func NewMdbm(db_file string, flags int, mode int, psize int, presize int) *MdbmL
 
 func (db MdbmLib) GetFirst() (string, string) {
 	C.mdbm_lock(db.db)
-    pair, err := C.mdbm_first_r(db.db, db.iter)
-    C.mdbm_unlock(db.db)
+	pair, err := C.mdbm_first_r(db.db, db.iter)
+	C.mdbm_unlock(db.db)
 	fmt.Printf("err: ", err)
-    if (pair.key.dsize == 0) {
+	if pair.key.dsize == 0 {
 		return "dsize is zero", "yes it is"
 	}
-    return string(C.GoBytes(unsafe.Pointer(pair.key.dptr), pair.key.dsize)), string(C.GoBytes(unsafe.Pointer(pair.val.dptr), pair.val.dsize))
+	return string(C.GoBytes(unsafe.Pointer(pair.key.dptr), pair.key.dsize)), string(C.GoBytes(unsafe.Pointer(pair.val.dptr), pair.val.dsize))
 }
 
 func (db MdbmLib) Fetch(key string) string {
@@ -68,7 +68,7 @@ func (db MdbmLib) Fetch(key string) string {
 	d_val := C.new_datum()
 	d_key.dptr = C.CString(key)
 	d_key.dsize = C.int(len(key))
-	iter := C.new_iter();
+	iter := C.new_iter()
 	C.mdbm_fetch_r(db.db, &d_key, &d_val, &iter)
 	C.mdbm_unlock(db.db)
 	fmt.Printf("d_val.dsize: %d\n", d_val.dsize)
@@ -87,7 +87,7 @@ func (db MdbmLib) Store(key string, val string, flags int) {
 	d_val.dsize = C.int(len(val))
 
 	C.mdbm_lock(db.db)
-	C.mdbm_store_r(db.db, &d_key, &d_val, C.int(flags), &iter);
+	C.mdbm_store_r(db.db, &d_key, &d_val, C.int(flags), &iter)
 	C.mdbm_unlock(db.db)
-	
+
 }
