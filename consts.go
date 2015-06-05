@@ -6,12 +6,9 @@ package mdbm
 
 #include "mdbm.h"
 */
-
 import "C"
 
-const FOO_BAR = 1
 const MDBM_O_CREAT = C.MDBM_O_CREAT
 const MDBM_O_TRUNC = C.MDBM_O_TRUNC
 const MDBM_O_FSYNC = C.MDBM_O_FSYNC
-const MDBM_O_ASYNC = C.MDBM_O_ASYNC
 const MDBM_O_ASYNC = C.MDBM_O_ASYNC
