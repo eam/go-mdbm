@@ -7,6 +7,7 @@ package mdbm
 #include "mdbm.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 MDBM_ITER new_iter() {
   MDBM_ITER iter;
@@ -25,13 +26,6 @@ import "unsafe"
 import "fmt"
 import "log"
 
-const MDBM_O_RDONLY = C.MDBM_O_RDONLY
-const MDBM_O_WRONLY = C.MDBM_O_WRONLY
-const MDBM_O_RDWR = C.MDBM_O_RDWR
-const MDBM_O_ACCMODE = C.MDBM_O_ACCMODE
-
-const MDBM_REPLACE = C.MDBM_REPLACE
-
 type MdbmLib struct {
 	db *C.MDBM
 	// maybe no iter, leave in for now
@@ -39,8 +33,8 @@ type MdbmLib struct {
 }
 
 func NewMdbm(db_file string, flags int, mode int, psize int, presize int) *MdbmLib {
-	fmt.Printf("int MDBM_O_WRONLY: %d\n\n\n", C.MDBM_O_WRONLY)
-	fmt.Printf("int MDBM_O_RDWR: %d\n\n\n", C.MDBM_O_RDWR)
+//	fmt.Printf("int MDBM_O_WRONLY: %d\n\n\n", C.MDBM_O_WRONLY)
+//	fmt.Printf("int MDBM_O_RDWR: %d\n\n\n", C.MDBM_O_RDWR)
 	c_db, err := C.mdbm_open(C.CString(db_file), C.int(flags), C.int(mode), C.int(psize), C.int(presize))
 	if unsafe.Pointer(c_db) == nil {
 		log.Fatal(err)
@@ -61,7 +55,16 @@ func (db MdbmLib) GetFirst() (string, string) {
 	return string(C.GoBytes(unsafe.Pointer(pair.key.dptr), pair.key.dsize)), string(C.GoBytes(unsafe.Pointer(pair.val.dptr), pair.val.dsize))
 }
 
-func (db MdbmLib) Fetch(key string) string {
+func (db MdbmLib) Lock() (int, error) {
+	ret, err := C.mdbm_lock(db.db)
+	return int(ret), err
+}
+func (db MdbmLib) Unlock() (int, error) {
+	ret, err := C.mdbm_unlock(db.db)
+	return int(ret), err
+}
+
+func (db MdbmLib) FetchNoLock(key string) string {
 	C.mdbm_lock(db.db)
 	d_key := C.new_datum()
 	d_val := C.new_datum()
@@ -69,8 +72,19 @@ func (db MdbmLib) Fetch(key string) string {
 	d_key.dsize = C.int(len(key))
 	iter := C.new_iter()
 	C.mdbm_fetch_r(db.db, &d_key, &d_val, &iter)
+	return C.GoStringN(d_val.dptr, d_val.dsize)
+}
+
+func (db MdbmLib) Fetch(key string) string {
+	C.mdbm_lock(db.db)
+	d_key := C.new_datum()
+	d_val := C.new_datum()
+	d_key.dptr = C.CString(key)
+	d_key.dsize = C.int(len(key))
+	iter := C.new_iter()
+	C.mdbm_lock(db.db)
+	C.mdbm_fetch_r(db.db, &d_key, &d_val, &iter)
 	C.mdbm_unlock(db.db)
-	fmt.Printf("d_val.dsize: %d\n", d_val.dsize)
 	return C.GoStringN(d_val.dptr, d_val.dsize)
 }
 
@@ -90,3 +104,22 @@ func (db MdbmLib) Store(key string, val string, flags int) {
 	C.mdbm_unlock(db.db)
 
 }
+
+func (db MdbmLib) Keys() []string {
+	iter := C.new_iter()
+	d_key := C.new_datum()
+	ret := make([]string, 1)
+	for {
+		d_key = C.mdbm_nextkey_r(db.db, &iter)
+		if d_key.dsize == 0 {
+			break
+		}
+		ret = append(ret, C.GoStringN(d_key.dptr, d_key.dsize))
+	}
+	return ret
+}
+
+func (db MdbmLib) Close() {
+	C.mdbm_close(db.db)
+}
+
