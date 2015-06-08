@@ -7,6 +7,6 @@ NOT READY FOR USE
 
 ## todo
 
-error handling for everything
-byte[] vs string
-expose operations without implicit locking?
+ * error handling for everything
+ * byte[] vs string
+ * expose operations without implicit locking?
